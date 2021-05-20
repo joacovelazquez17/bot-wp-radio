@@ -1,0 +1,1 @@
+En esta carpeta se guardan los audios recibidos .No eliminar
