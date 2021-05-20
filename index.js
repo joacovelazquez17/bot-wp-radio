@@ -3,11 +3,12 @@
 const { Client, MessageMedia } = require('whatsapp-web.js');
 const fs=require('fs');
 const fsp = require('fs').promises;
-let client;
-let sessionData;
 const SESSION_FILE_PATH = './session.json';
 const qrcode = require('qrcode-terminal');
-
+const ExcelJS = require('exceljs');
+const pathExcel = `./Excel/contactos.xlsx`;
+let client;
+let sessionData;
 //-------------------------------------------------//
 
 /**
@@ -17,7 +18,9 @@ const listenMessage=()=> {
   console.log("Escuchando Whatssaps..")
 
   client.on('message', async msg => {
-    const { from, to, body } = msg;
+    const { from, to, body,author} = msg;
+    //msg.author cuando el wp viene de un grupo ----- msg.from cuando es de un wp comun 
+    author!==undefined ?  addNumeroWhatssap(author.replace('@c.us', '').substr(0,13)) : addNumeroWhatssap(from.replace('@c.us', '').substr(0,13)); 
 
 
     if (msg.hasMedia) {//Solo archivos media
@@ -75,6 +78,67 @@ const SaveAudio = (media,msg) => new Promise((resolve, reject) =>{
   
 })
   
+
+
+/**
+  * @param {*}numeroWp
+ */
+
+ function addNumeroWhatssap(numeroWp) {
+  const workbook = new ExcelJS.Workbook();
+  if (fs.existsSync(pathExcel)) {
+      /**
+       * Si existe el archivo de contactos lo actualizamos
+       */
+      workbook.xlsx.readFile(pathExcel)
+          .then(() => {
+              const worksheet = workbook.getWorksheet(1);
+              const lastRow = worksheet.lastRow;
+
+              //busca en exel si ya existe el numero de wp
+              let repetido = false;
+              for (var i = 2; i <= lastRow.number; i++) {
+                  if (worksheet.getRow(i).getCell('A').value == numeroWp) {
+                      repetido = true;
+                      break;
+                  }
+              }
+              if (repetido === false) {//si no existe lo añade
+                  var getRowInsert = worksheet.getRow(++(lastRow.number));
+                  getRowInsert.getCell('A').value = numeroWp;
+                  getRowInsert.commit();
+                  workbook.xlsx.writeFile(pathExcel);
+                  console.log("Numero Nuevo!");
+              } else {
+                  //console.log("Este numero esta Añadido")
+              }
+          });
+
+      } 
+  else {
+      /**
+       * NO existe el archivo de contactos lo creamos
+       */
+      
+      const worksheet = workbook.addWorksheet('Excel');
+      worksheet.columns = [
+          { header: 'Contactos', key: 'contactos_key' },
+      ];
+      worksheet.addRow([numeroWp]);
+      workbook.xlsx.writeFile(pathExcel)
+      .then(() => {
+
+          console.log("Archivo  Excel de contactos creado!");
+      })
+      .catch((err) => {
+          console.log("Error al crear Archivo Excel contactos", err);
+      });
+  }
+
+}
+
+
+
 
 
 
